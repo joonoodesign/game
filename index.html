@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>가족 스도쿠 게임</title>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; display: flex; flex-direction: column; align-items: center; background: #f8f9fa; margin: 0; padding: 20px 0; touch-action: manipulation; }
+        h2 { margin: 0 0 10px 0; color: #343a40; }
+        
+        /* 타이머 스타일 */
+        .timer { font-size: 1.2rem; font-weight: bold; color: #e03131; margin-bottom: 15px; letter-spacing: 2px; }
+
+        .top-controls { display: flex; gap: 8px; margin-bottom: 20px; }
+        .top-controls button { padding: 8px 16px; font-size: 1rem; border: none; border-radius: 20px; background: #e9ecef; color: #495057; cursor: pointer; font-weight: bold; }
+        .top-controls button:active { background: #ced4da; }
+
+        .grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 0; border: 3px solid #343a40; background: #343a40; width: 95vw; max-width: 400px; aspect-ratio: 1; }
+        .cell { background: white; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; cursor: pointer; border-right: 1px solid #dee2e6; border-bottom: 1px solid #dee2e6; user-select: none; }
+        
+        .cell:nth-child(3n) { border-right: 2px solid #343a40; }
+        .cell:nth-child(9n) { border-right: none; }
+        .cell.bottom-border { border-bottom: 2px solid #343a40; }
+        
+        .cell.fixed { color: #212529; font-weight: bold; background: #f1f3f5; }
+        .cell.user-input { color: #1971c2; }
+        .cell.selected { background: #d0ebff !important; }
+
+        .numpad { margin-top: 25px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: 95vw; max-width: 400px; }
+        .numpad button { padding: 15px 0; font-size: 1.3rem; border-radius: 10px; border: none; background: #ffffff; color: #343a40; box-shadow: 0 2px 5px rgba(0,0,0,0.1); cursor: pointer; font-weight: bold; }
+        .numpad button:active { transform: translateY(2px); box-shadow: none; }
+        .numpad button.action-btn { background: #495057; color: white; }
+    </style>
+</head>
+<body>
+
+    <h2>스도쿠 게임</h2>
+    <div class="timer" id="timer">⏱️ 00:00</div>
+    
+    <div class="top-controls">
+        <button onclick="initGame(30)">초급</button>
+        <button onclick="initGame(45)">중급</button>
+        <button onclick="initGame(55)">고급</button>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    <div class="numpad" id="numpad"></div>
+
+    <script>
+        const grid = document.getElementById('grid');
+        const numpad = document.getElementById('numpad');
+        const timerDisplay = document.getElementById('timer');
+        
+        let selectedCell = null;
+        let solutionBoard = [];
+        let currentBoard = [];
+        let fixedCells = [];
+        
+        // 타이머 관련 변수
+        let timerInterval;
+        let secondsElapsed = 0;
+        let isGameOver = false;
+
+        const basePattern = [
+            [1,2,3,4,5,6,7,8,9], [4,5,6,7,8,9,1,2,3], [7,8,9,1,2,3,4,5,6],
+            [2,3,1,5,6,4,8,9,7], [5,6,4,8,9,7,2,3,1], [8,9,7,2,3,1,5,6,4],
+            [3,1,2,6,4,5,9,7,8], [6,4,5,9,7,8,3,1,2], [9,7,8,3,1,2,6,4,5]
+        ];
+
+        function shuffleArray(arr) {
+            return arr.sort(() => Math.random() - 0.5);
+        }
+
+        // 타이머 함수
+        function startTimer() {
+            clearInterval(timerInterval);
+            secondsElapsed = 0;
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                secondsElapsed++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(secondsElapsed / 60);
+            const seconds = secondsElapsed % 60;
+            timerDisplay.innerText = `⏱️ ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function initGame(holes = 45) {
+            grid.innerHTML = '';
+            selectedCell = null;
+            isGameOver = false;
+            startTimer(); // 새 게임 시작 시 타이머 초기화 및 작동
+
+            let numMap = shuffleArray([1,2,3,4,5,6,7,8,9]);
+            solutionBoard = basePattern.map(row => row.map(val => numMap[val-1]));
+
+            currentBoard = solutionBoard.map(row => [...row]);
+            fixedCells = Array(81).fill(false);
+            
+            let count = 0;
+            while(count < holes) {
+                let r = Math.floor(Math.random() * 9);
+                let c = Math.floor(Math.random() * 9);
+                if(currentBoard[r][c] !== 0) {
+                    currentBoard[r][c] = 0;
+                    count++;
+                }
+            }
+
+            for (let i = 0; i < 81; i++) {
+                const r = Math.floor(i / 9);
+                const c = i % 9;
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                
+                if (r === 2 || r === 5) cell.classList.add('bottom-border');
+
+                if (currentBoard[r][c] !== 0) {
+                    cell.innerText = currentBoard[r][c];
+                    cell.classList.add('fixed');
+                    fixedCells[i] = true;
+                } else {
+                    cell.dataset.index = i;
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    cell.onclick = () => selectCell(cell);
+                }
+                grid.appendChild(cell);
+            }
+        }
+
+        function selectCell(cell) {
+            if(isGameOver) return;
+            document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
+            selectedCell = cell;
+            cell.classList.add('selected');
+        }
+
+        function inputNumber(num) {
+            if (selectedCell && !isGameOver) {
+                selectedCell.innerText = num;
+                selectedCell.classList.add('user-input');
+                checkWin(); // 숫자 입력할 때마다 정답인지 확인
+            }
+        }
+
+        function clearCell() {
+            if (selectedCell && !isGameOver) {
+                selectedCell.innerText = '';
+                selectedCell.classList.remove('user-input');
+            }
+        }
+
+        function showSolution() {
+            if(isGameOver) return;
+            isGameOver = true;
+            stopTimer(); // 해답을 보면 타이머 정지
+            
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach((cell, i) => {
+                const r = Math.floor(i / 9);
+                const c = i % 9;
+                if (!fixedCells[i]) {
+                    cell.innerText = solutionBoard[r][c];
+                    cell.style.color = '#e03131';
+                }
+            });
+        }
+
+        // 승리 판정 함수
+        function checkWin() {
+            const cells = document.querySelectorAll('.cell');
+            let isWin = true;
+            let isFull = true;
+            
+            cells.forEach((cell, i) => {
+                if (!fixedCells[i]) {
+                    const r = Math.floor(i / 9);
+                    const c = i % 9;
+                    if (cell.innerText === '') {
+                        isFull = false; // 빈칸이 남아있음
+                    } else if (parseInt(cell.innerText) !== solutionBoard[r][c]) {
+                        isWin = false; // 틀린 숫자가 있음
+                    }
+                }
+            });
+
+            if (isFull && isWin) {
+                isGameOver = true;
+                stopTimer();
+                const timeString = timerDisplay.innerText.replace('⏱️ ', '');
+                // 화면 업데이트가 먼저 되도록 아주 짧은 지연 후 알림창 띄우기
+                setTimeout(() => {
+                    alert(`🎉 대단해요! ${timeString} 만에 퍼즐을 완성했습니다!`);
+                }, 100);
+            }
+        }
+
+        for (let i = 1; i <= 9; i++) {
+            const btn = document.createElement('button');
+            btn.innerText = i;
+            btn.onclick = () => inputNumber(i);
+            numpad.appendChild(btn);
+        }
+        
+        const clearBtn = document.createElement('button');
+        clearBtn.innerText = '지우기';
+        clearBtn.className = 'action-btn';
+        clearBtn.onclick = clearCell;
+        numpad.appendChild(clearBtn);
+
+        const solveBtn = document.createElement('button');
+        solveBtn.innerText = '해답보기';
+        solveBtn.className = 'action-btn';
+        solveBtn.style.gridColumn = "span 5";
+        solveBtn.onclick = showSolution;
+        numpad.appendChild(solveBtn);
+
+        // 초기 실행 (기본 중급)
+        initGame(45);
+    </script>
+</body>
+</html>
