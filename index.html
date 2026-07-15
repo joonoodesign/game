@@ -111,15 +111,35 @@
         }
 
         async function createRoom() {
-            currentMode = 'multi'; myName = document.getElementById('playerName').value;
-            roomId = Math.floor(1000+Math.random()*9000).toString(); isHost = true;
-            let holes = parseInt(document.getElementById('multiDiff').value);
-            let b = generateSudoku(holes);
-            await supabaseClient.from('rooms').insert([{ id:roomId, host:myName, status:'waiting', difficulty:holes, solution:b.sol, start_board:b.start }]);
-            const { data } = await supabaseClient.from('players').insert([{ room_id:roomId, name:myName, is_host:true }]).select();
-            myPlayerId = data[0].id;
-            setupWaitingRoom();
-        }
+    try {
+        currentMode = 'multi';
+        myName = document.getElementById('playerName').value;
+        roomId = Math.floor(1000 + Math.random() * 9000).toString();
+        isHost = true;
+        let holes = parseInt(document.getElementById('multiDiff').value);
+        let boardData = generateSudoku(holes);
+
+        // 1. 방 생성
+        const { error: roomError } = await supabaseClient.from('rooms').insert([{ 
+            id: roomId, host: myName, status: 'waiting', difficulty: holes, 
+            solution: boardData.sol, start_board: boardData.start 
+        }]);
+        if (roomError) throw new Error("방 생성 실패: " + roomError.message);
+
+        // 2. 플레이어 추가
+        const { data, error: playerError } = await supabaseClient.from('players').insert([{ 
+            room_id: roomId, name: myName, is_host: true 
+        }]).select();
+        if (playerError) throw new Error("플레이어 등록 실패: " + playerError.message);
+
+        myPlayerId = data[0].id;
+        setupWaitingRoom();
+
+    } catch (err) {
+        alert("모바일 에러 발생!: " + err.message);
+        console.error(err);
+    }
+}
 
         async function joinRoom() {
             currentMode = 'multi'; myName = document.getElementById('playerName').value; roomId = document.getElementById('joinCode').value.trim();
