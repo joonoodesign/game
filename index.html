@@ -10,6 +10,7 @@
             --primary: #4f46e5; --bg: #f8fafc; --card: #ffffff;
             --text-dark: #1e293b; --text-light: #64748b;
         }
+        html { overflow-y: scroll; } /* 스크롤 강제 활성화 */
         body { 
             font-family: 'Pretendard', sans-serif; 
             display: flex; 
@@ -17,11 +18,10 @@
             align-items: center; 
             background: var(--bg); 
             margin: 0; 
-            padding: 15px 15px 40px 15px; /* 하단 스크롤 여백 추가 */
+            padding: 15px; 
             color: var(--text-dark); 
             min-height: 100vh; 
-            min-height: 100dvh; /* 모바일 동적 뷰포트 지원 */
-            box-sizing: border-box; /* 패딩 포함 크기 계산 */
+            box-sizing: border-box; 
             touch-action: manipulation; 
         }
         h1, h2 { color: var(--primary); margin-top: 0; text-align: center; }
@@ -32,15 +32,17 @@
             max-width: 450px; 
             flex-direction: column; 
             align-items: center; 
-            padding-bottom: 20px; /* 화면 내부 하단 여백 추가 */
         }
         .screen.active { display: flex; }
         
-        .card { background: var(--card); padding: 25px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; margin-bottom: 15px; }
+        /* 카드 여백 축소로 세로 공간 확보 */
+        .card { background: var(--card); padding: 15px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; margin-bottom: 15px; }
         .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; color: white; background: var(--primary); cursor: pointer; margin-bottom: 10px; }
         .btn-secondary { background: #e2e8f0; color: var(--text-dark); }
         .btn-danger { background: #ef4444; color: white; }
-        .btn-exit { background: #64748b; color: white; margin-top: 15px; }
+        
+        /* 모바일 하단바를 피하기 위한 강제 여백 (핵심 해결책) */
+        .btn-exit { background: #64748b; color: white; margin-top: 15px; margin-bottom: 80px; }
         
         select, input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; box-sizing: border-box; }
         label { font-weight: bold; display: block; margin-bottom: 5px; font-size: 0.9rem; }
@@ -52,7 +54,7 @@
         .timer { font-size: 1.2rem; color: #ef4444; }
         
         .grid { display: grid; grid-template-columns: repeat(9, 1fr); border: 3px solid #334155; background: #334155; width: 100%; aspect-ratio: 1; gap: 1px; border-radius: 5px; overflow: hidden;}
-        .cell { background: white; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; cursor: pointer; user-select: none; }
+        .cell { background: white; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; cursor: pointer; user-select: none; }
         .cell:nth-child(3n) { border-right: 2px solid #334155; }
         .cell:nth-child(9n) { border-right: none; }
         .cell:nth-child(n+19):nth-child(-n+27) { border-bottom: 2px solid #334155; }
@@ -62,7 +64,8 @@
         .cell.selected { background: #bae6fd !important; }
 
         .numpad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 100%; margin-top: 15px; }
-        .numpad button { padding: 10px 0; font-size: 1.2rem; font-weight: bold; border: none; border-radius: 8px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; }
+        /* 버튼 상하 크기 축소 */
+        .numpad button { padding: 8px 0; font-size: 1.1rem; font-weight: bold; border: none; border-radius: 8px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; }
         .numpad button.action { background: #475569; color: white; }
 
         #leaderboard { display: none; width: 100%; background: #f1f5f9; padding: 10px; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; }
