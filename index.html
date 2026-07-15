@@ -2,124 +2,78 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>가족 스도쿠 게임</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root {
-            --primary: #4f46e5; --bg: #f8fafc; --card: #ffffff;
-            --text-dark: #1e293b; --text-light: #64748b;
-        }
-        body { font-family: 'Pretendard', sans-serif; display: flex; flex-direction: column; align-items: center; background: var(--bg); margin: 0; padding: 15px; color: var(--text-dark); min-height: 100vh; touch-action: manipulation; }
-        h1, h2 { color: var(--primary); margin-top: 0; text-align: center; }
-        
-        .screen { display: none; width: 100%; max-width: 450px; flex-direction: column; align-items: center; }
+        :root { --primary: #4f46e5; --bg: #f8fafc; --card: #ffffff; --text-dark: #1e293b; --text-light: #64748b; }
+        body { font-family: 'Pretendard', sans-serif; display: flex; flex-direction: column; align-items: center; background: var(--bg); margin: 0; padding: 10px; color: var(--text-dark); min-height: 100svh; overflow-y: auto; touch-action: manipulation; }
+        .container { width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; padding-bottom: 20px; }
+        .screen { display: none; width: 100%; flex-direction: column; align-items: center; }
         .screen.active { display: flex; }
-        
-        .card { background: var(--card); padding: 25px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; margin-bottom: 15px; }
-        .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; color: white; background: var(--primary); cursor: pointer; margin-bottom: 10px; }
+        .card { background: var(--card); padding: 20px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; margin-bottom: 10px; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; color: white; background: var(--primary); cursor: pointer; margin-bottom: 8px; }
         .btn-secondary { background: #e2e8f0; color: var(--text-dark); }
         .btn-danger { background: #ef4444; color: white; }
-        .btn-exit { background: #64748b; color: white; margin-top: 15px; }
-        
-        select, input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; box-sizing: border-box; }
-        label { font-weight: bold; display: block; margin-bottom: 5px; font-size: 0.9rem; }
-        
-        .room-code { font-size: 2.5rem; letter-spacing: 5px; color: var(--primary); font-weight: 900; text-align: center; margin: 15px 0; }
-        .player-item { padding: 10px; background: #f1f5f9; margin-bottom: 5px; border-radius: 5px; display: flex; justify-content: space-between; font-weight: bold; }
-        
-        .game-header { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; }
-        .timer { font-size: 1.2rem; color: #ef4444; }
-        
-        .grid { display: grid; grid-template-columns: repeat(9, 1fr); border: 3px solid #334155; background: #334155; width: 100%; aspect-ratio: 1; gap: 1px; border-radius: 5px; overflow: hidden;}
-        .cell { background: white; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; cursor: pointer; user-select: none; }
-        .cell:nth-child(3n) { border-right: 2px solid #334155; }
-        .cell:nth-child(9n) { border-right: none; }
-        .cell:nth-child(n+19):nth-child(-n+27) { border-bottom: 2px solid #334155; }
-        .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid #334155; }
-        .cell.fixed { background: #e2e8f0; font-weight: bold; color: var(--text-dark); }
+        .btn-exit { background: #64748b; color: white; margin-top: 10px; }
+        select, input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; }
+        .grid { display: grid; grid-template-columns: repeat(9, 1fr); border: 2px solid #334155; background: #334155; width: 100%; aspect-ratio: 1; gap: 1px; border-radius: 4px; overflow: hidden; }
+        .cell { background: white; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; user-select: none; }
+        .cell.fixed { background: #e2e8f0; font-weight: bold; }
         .cell.user-input { color: #2563eb; font-weight: bold; }
         .cell.selected { background: #bae6fd !important; }
-
-        .numpad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 100%; margin-top: 15px; }
-        .numpad button { padding: 12px 0; font-size: 1.2rem; font-weight: bold; border: none; border-radius: 8px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; }
-        .numpad button.action { background: #475569; color: white; }
-
-        #leaderboard { display: none; width: 100%; background: #f1f5f9; padding: 10px; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; }
-        .lb-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.9rem; align-items: center; }
-        .lb-bar-bg { flex-grow: 1; background: #cbd5e1; height: 8px; border-radius: 4px; margin: 0 10px; overflow: hidden; }
+        .numpad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; width: 100%; margin-top: 10px; }
+        .numpad button { padding: 10px 0; font-size: 1.1rem; border: none; border-radius: 6px; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: pointer; }
+        #leaderboard { display: none; width: 100%; background: #f1f5f9; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 0.85rem; }
+        .lb-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .lb-bar-bg { flex-grow: 1; background: #cbd5e1; height: 8px; border-radius: 4px; margin: 0 10px; }
         .lb-bar { background: var(--primary); height: 100%; width: 0%; transition: 0.3s; }
-        .lb-bar.done { background: #10b981; }
     </style>
 </head>
 <body>
-    <div id="homeScreen" class="screen active">
-        <div class="card">
-            <h1>🧩 가족 스도쿠</h1>
-            <p style="text-align: center; color: var(--text-light); margin-bottom: 25px;">게임 모드를 선택하세요</p>
-            <button class="btn" onclick="navTo('singleSetupScreen')">👤 나홀로 게임</button>
-            <button class="btn" style="background: #10b981;" onclick="navTo('multiSetupScreen')">👨‍👩‍👧‍👦 가족 초대하기 (멀티)</button>
+    <div class="container">
+        <div id="homeScreen" class="screen active">
+            <div class="card">
+                <h1>🧩 가족 스도쿠</h1>
+                <button class="btn" onclick="navTo('singleSetupScreen')">👤 나홀로 게임</button>
+                <button class="btn" style="background: #10b981;" onclick="navTo('multiSetupScreen')">👨‍👩‍👧‍👦 가족 초대하기</button>
+            </div>
         </div>
-    </div>
-
-    <div id="singleSetupScreen" class="screen">
-        <div class="card">
-            <h2>👤 나홀로 게임</h2>
-            <label>난이도 선택</label>
-            <select id="singleDiff">
-                <option value="30">초급 (빈칸 30개)</option><option value="45" selected>중급 (빈칸 45개)</option><option value="55">고급 (빈칸 55개)</option>
-            </select>
-            <button class="btn" onclick="startSingleGame()">게임 시작</button>
-            <button class="btn btn-secondary" onclick="navTo('homeScreen')">뒤로 가기</button>
+        <div id="singleSetupScreen" class="screen">
+            <div class="card">
+                <h2>나홀로 설정</h2>
+                <select id="singleDiff"><option value="30">초급</option><option value="45" selected>중급</option></select>
+                <button class="btn" onclick="startSingleGame()">시작</button>
+                <button class="btn btn-secondary" onclick="navTo('homeScreen')">뒤로</button>
+            </div>
         </div>
-    </div>
-
-    <div id="multiSetupScreen" class="screen">
-        <div class="card">
-            <h2>👨‍👩‍👧‍👦 멀티플레이 로비</h2>
-            <label>나는 누구인가요?</label>
-            <select id="playerName">
-                <option value="아빠">👨 아빠</option><option value="엄마">👩 엄마</option><option value="채원">👧 채원</option><option value="유빈">👧 유빈</option><option value="준우">👦 준우</option>
-            </select>
-            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-            <label>새로운 방 만들기 (방장)</label>
-            <select id="multiDiff">
-                <option value="30">초급 (빈칸 30개)</option><option value="45" selected>중급 (빈칸 45개)</option><option value="55">고급 (빈칸 55개)</option>
-            </select>
-            <button class="btn" style="background: #10b981;" onclick="createRoom()">방 만들기</button>
-            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-            <label>기존 방 참가하기</label>
-            <input type="text" id="joinCode" placeholder="방 번호 4자리 입력" maxlength="4">
-            <button class="btn btn-secondary" onclick="joinRoom()">참가하기</button>
-            <button class="btn btn-exit" onclick="navTo('homeScreen')">홈으로 돌아가기</button>
+        <div id="multiSetupScreen" class="screen">
+            <div class="card">
+                <h2>멀티플레이 로비</h2>
+                <select id="playerName"><option value="아빠">아빠</option><option value="엄마">엄마</option><option value="채원">채원</option><option value="유빈">유빈</option><option value="준우">준우</option></select>
+                <button class="btn" onclick="createRoom()">방 만들기</button>
+                <input type="text" id="joinCode" placeholder="방 번호 4자리" maxlength="4">
+                <button class="btn btn-secondary" onclick="joinRoom()">참가하기</button>
+                <button class="btn btn-exit" onclick="navTo('homeScreen')">홈으로</button>
+            </div>
         </div>
-    </div>
-
-    <div id="waitingScreen" class="screen">
-        <div class="card">
-            <h2>초대 코드</h2>
-            <div class="room-code" id="displayCode">0000</div>
-            <p style="text-align: center; color: var(--text-light); font-size: 0.9rem;">최대 5명까지 입장 가능</p>
-            <div id="playerListContainer" style="margin-bottom: 20px;"></div>
-            <button class="btn" id="btnHostStart" style="display: none; background: #ef4444;" onclick="startMultiGame()">🚀 대결 시작하기!</button>
-            <p id="msgWaitHost" style="text-align: center; display: none;">방장이 시작할 때까지 대기 중...</p>
-            <button class="btn btn-exit" onclick="leaveRoom()">방 나가기</button>
+        <div id="waitingScreen" class="screen">
+            <div class="card">
+                <h2>초대 코드</h2>
+                <div style="font-size: 2rem; font-weight: bold; color: var(--primary); text-align: center;" id="displayCode"></div>
+                <div id="playerListContainer"></div>
+                <button class="btn" id="btnHostStart" style="display:none; background:#ef4444;" onclick="startMultiGame()">🚀 시작</button>
+                <button class="btn btn-exit" onclick="leaveRoom()">방 나가기</button>
+            </div>
         </div>
-    </div>
-
-    <div id="gameScreen" class="screen">
-        <div id="leaderboard">
-            <div style="font-weight: bold; font-size: 0.85rem; color: var(--text-light); margin-bottom: 5px;">실시간 현황</div>
-            <div id="lbPlayers"></div>
+        <div id="gameScreen" class="screen">
+            <div id="leaderboard"><div id="lbPlayers"></div></div>
+            <div class="game-header"><span id="timer">⏱️ 00:00</span></div>
+            <div class="grid" id="grid"></div>
+            <div class="numpad" id="numpad"></div>
+            <button class="btn btn-danger" id="btnEndGame" style="display:none;" onclick="endMultiGame()">🛑 종료</button>
+            <button class="btn btn-exit" onclick="leaveGame()">나가기</button>
         </div>
-        <div class="game-header">
-            <span id="gameTitle">모드</span>
-            <span class="timer" id="timer">⏱️ 00:00</span>
-        </div>
-        <div class="grid" id="grid"></div>
-        <div class="numpad" id="numpad"></div>
-        <button class="btn btn-danger" id="btnEndGame" style="display: none; margin-top: 15px;" onclick="endMultiGame()">🛑 모두의 게임 종료시키기</button>
-        <button class="btn btn-exit" onclick="leaveGame()">🚪 게임 나가기 (홈으로)</button>
     </div>
 
     <script>
@@ -127,22 +81,17 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_NPllKEUc0xFurfTyzWiy8Q_7qxwaASD';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        let currentMode = '', roomId = null, myName = '', isHost = false, myPlayerId = null;
-        let solutionBoard = [], currentBoard = [], fixedCells = Array(81).fill(false), totalHoles = 0, selectedCell = null;
-        let timerInterval, secondsElapsed = 0, isPlaying = false, myFinished = false; 
-        let roomSubscription = null, playersSubscription = null;
+        let currentMode='', roomId=null, myName='', isHost=false, myPlayerId=null, isPlaying=false;
+        let solutionBoard=[], currentBoard=[], fixedCells=Array(81).fill(false), totalHoles=0, selectedCell=null;
+        let timerInterval, secondsElapsed=0, myFinished=false;
 
-        const basePattern = [
-            [1,2,3,4,5,6,7,8,9], [4,5,6,7,8,9,1,2,3], [7,8,9,1,2,3,4,5,6],
-            [2,3,1,5,6,4,8,9,7], [5,6,4,8,9,7,2,3,1], [8,9,7,2,3,1,5,6,4],
-            [3,1,2,6,4,5,9,7,8], [6,4,5,9,7,8,3,1,2], [9,7,8,3,1,2,6,4,5]
-        ];
+        const basePattern = [[1,2,3,4,5,6,7,8,9],[4,5,6,7,8,9,1,2,3],[7,8,9,1,2,3,4,5,6],[2,3,1,5,6,4,8,9,7],[5,6,4,8,9,7,2,3,1],[8,9,7,2,3,1,5,6,4],[3,1,2,6,4,5,9,7,8],[6,4,5,9,7,8,3,1,2],[9,7,8,3,1,2,6,4,5]];
 
         function generateSudoku(holes) {
             let map = [1,2,3,4,5,6,7,8,9].sort(() => Math.random() - 0.5);
             let sol = basePattern.map(row => row.map(v => map[v-1]));
             let start = sol.map(row => [...row]);
-            let count = 0;
+            let count=0;
             while(count < holes) {
                 let r = Math.floor(Math.random()*9), c = Math.floor(Math.random()*9);
                 if(start[r][c] !== 0) { start[r][c] = 0; count++; }
@@ -150,10 +99,7 @@
             return { sol, start, holes };
         }
 
-        function navTo(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
-        }
+        function navTo(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
 
         function startSingleGame() {
             currentMode = 'single';
@@ -161,66 +107,25 @@
             let data = generateSudoku(holes);
             setupBoard(data.sol, data.start, holes);
             document.getElementById('leaderboard').style.display = 'none';
-            document.getElementById('gameTitle').innerText = '나홀로 모드';
-            document.getElementById('btnEndGame').style.display = 'none';
             navTo('gameScreen'); startTimer();
         }
 
-        // --- 여기서부터 에러를 화면에 띄워주는 로직이 추가되었습니다 ---
         async function createRoom() {
-            currentMode = 'multi';
-            myName = document.getElementById('playerName').value;
-            roomId = Math.floor(1000 + Math.random() * 9000).toString();
-            isHost = true;
+            currentMode = 'multi'; myName = document.getElementById('playerName').value;
+            roomId = Math.floor(1000+Math.random()*9000).toString(); isHost = true;
             let holes = parseInt(document.getElementById('multiDiff').value);
-            let boardData = generateSudoku(holes);
-
-            // DB 방 생성
-            const { error: roomError } = await supabaseClient.from('rooms').insert([{ 
-                id: roomId, host: myName, status: 'waiting', difficulty: holes, 
-                solution: boardData.sol, start_board: boardData.start 
-            }]);
-
-            if (roomError) {
-                alert("방 생성 오류! (SQL 설정을 확인해주세요): \n" + roomError.message);
-                return;
-            }
-
-            // DB 플레이어 추가
-            const { data, error: playerError } = await supabaseClient.from('players').insert([{ 
-                room_id: roomId, name: myName, is_host: true 
-            }]).select();
-
-            if (playerError || !data) {
-                alert("플레이어 생성 오류!: \n" + (playerError ? playerError.message : "데이터 없음"));
-                return;
-            }
-
+            let b = generateSudoku(holes);
+            await supabaseClient.from('rooms').insert([{ id:roomId, host:myName, status:'waiting', difficulty:holes, solution:b.sol, start_board:b.start }]);
+            const { data } = await supabaseClient.from('players').insert([{ room_id:roomId, name:myName, is_host:true }]).select();
             myPlayerId = data[0].id;
             setupWaitingRoom();
         }
 
         async function joinRoom() {
-            currentMode = 'multi';
-            myName = document.getElementById('playerName').value;
-            roomId = document.getElementById('joinCode').value.trim();
-            isHost = false;
-
-            if(roomId.length !== 4) return alert("방 번호 4자리를 입력하세요.");
-
-            const { data: roomData, error: roomError } = await supabaseClient.from('rooms').select('*').eq('id', roomId).single();
-            if(roomError || !roomData) return alert("존재하지 않는 방이거나 에러가 발생했습니다.");
-            if(roomData.status !== 'waiting') return alert("이미 게임이 시작되었거나 종료된 방입니다.");
-
-            const { count } = await supabaseClient.from('players').select('*', { count: 'exact' }).eq('room_id', roomId);
-            if(count >= 5) return alert("방이 꽉 찼습니다! (최대 5명)");
-
-            const { data, error: playerError } = await supabaseClient.from('players').insert([{ 
-                room_id: roomId, name: myName, is_host: false 
-            }]).select();
-
-            if (playerError) return alert("입장 오류: " + playerError.message);
-
+            currentMode = 'multi'; myName = document.getElementById('playerName').value; roomId = document.getElementById('joinCode').value.trim();
+            const { data: roomData } = await supabaseClient.from('rooms').select('*').eq('id', roomId).single();
+            if(!roomData) return alert("방을 찾을 수 없습니다.");
+            const { data } = await supabaseClient.from('players').insert([{ room_id:roomId, name:myName, is_host:false }]).select();
             myPlayerId = data[0].id;
             setupWaitingRoom();
         }
@@ -228,160 +133,64 @@
         function setupWaitingRoom() {
             document.getElementById('displayCode').innerText = roomId;
             document.getElementById('btnHostStart').style.display = isHost ? 'block' : 'none';
-            document.getElementById('msgWaitHost').style.display = isHost ? 'none' : 'block';
             navTo('waitingScreen');
-            subscribeToRealtime();
             fetchPlayers();
         }
 
         async function fetchPlayers() {
             const { data } = await supabaseClient.from('players').select('*').eq('room_id', roomId);
-            renderPlayerList(data);
+            const container = document.getElementById('playerListContainer'); container.innerHTML = '';
+            data.forEach(p => container.innerHTML += `<div class="player-item">👤 ${p.name} ${p.is_host?'👑':''}</div>`);
         }
 
-        function renderPlayerList(players) {
-            const container = document.getElementById('playerListContainer');
-            container.innerHTML = '';
-            players.forEach(p => {
-                let badge = p.is_host ? '👑 방장' : '대기중';
-                container.innerHTML += `<div class="player-item"><span>👤 ${p.name}</span> <span style="color:var(--primary);">${badge}</span></div>`;
-            });
-        }
-
-        function subscribeToRealtime() {
-            roomSubscription = supabaseClient.channel(`room_${roomId}`)
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, payload => {
-                    if(payload.new.status === 'playing' && !isPlaying) launchMultiGame(payload.new);
-                    else if (payload.new.status === 'finished') forceStopGame();
-                }).subscribe();
-
-            playersSubscription = supabaseClient.channel(`players_${roomId}`)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` }, payload => {
-                    fetchPlayersForLeaderboard();
-                }).subscribe();
-        }
-
-        async function fetchPlayersForLeaderboard() {
-            const { data } = await supabaseClient.from('players').select('*').eq('room_id', roomId);
-            if(!isPlaying) renderPlayerList(data);
-            else updateLeaderboardUI(data);
-        }
-
-        async function startMultiGame() {
-            await supabaseClient.from('rooms').update({ status: 'playing' }).eq('id', roomId);
-        }
-
-        function launchMultiGame(roomData) {
-            setupBoard(roomData.solution, roomData.start_board, 81 - roomData.start_board.flat().filter(x=>x!==0).length);
-            document.getElementById('leaderboard').style.display = 'block';
-            document.getElementById('gameTitle').innerText = `${myName}님의 퍼즐`;
-            document.getElementById('btnEndGame').style.display = isHost ? 'block' : 'none';
-            navTo('gameScreen'); startTimer(); fetchPlayersForLeaderboard();
-        }
-
-        function updateLeaderboardUI(players) {
-            const lb = document.getElementById('lbPlayers'); lb.innerHTML = '';
-            players.forEach(p => {
-                let timeStr = p.completed_time ? ` (${p.completed_time})` : '';
-                let isDone = p.progress >= 100;
-                lb.innerHTML += `<div class="lb-row"><div style="width: 50px; font-weight: bold;">${p.name}</div><div class="lb-bar-bg"><div class="lb-bar ${isDone?'done':''}" style="width: ${p.progress}%;"></div></div><div style="width: 45px; text-align: right; font-size:0.8rem;">${isDone ? '완료!'+timeStr : p.progress+'%'}</div></div>`;
-            });
-        }
-
-        async function endMultiGame() {
-            if(confirm("모든 사람의 게임을 종료시킵니다. 계속하시겠습니까?")) {
-                await supabaseClient.from('rooms').update({ status: 'finished' }).eq('id', roomId);
-            }
-        }
-
-        function forceStopGame() {
-            isPlaying = false; clearInterval(timerInterval);
-            alert("🛑 방장이 게임을 종료했습니다!\n상단 리더보드에서 최종 결과를 확인하세요.");
-        }
-
-        async function leaveRoom() {
-            if(myPlayerId) await supabaseClient.from('players').delete().eq('id', myPlayerId);
-            clearSubscriptions(); navTo('homeScreen');
-        }
-
-        async function leaveGame() {
-            if(currentMode === 'multi' && myPlayerId) await supabaseClient.from('players').delete().eq('id', myPlayerId);
-            clearSubscriptions(); navTo('homeScreen');
-        }
-
-        function clearSubscriptions() {
-            isPlaying = false; myFinished = false; clearInterval(timerInterval);
-            if(roomSubscription) supabaseClient.removeChannel(roomSubscription);
-            if(playersSubscription) supabaseClient.removeChannel(playersSubscription);
-        }
+        async function startMultiGame() { await supabaseClient.from('rooms').update({ status: 'playing' }).eq('id', roomId); }
 
         function setupBoard(sol, start, holes) {
-            solutionBoard = sol; currentBoard = start.map(row => [...row]); totalHoles = holes;
-            isPlaying = true; myFinished = false; selectedCell = null;
+            solutionBoard = sol; currentBoard = start.map(r => [...r]); totalHoles = holes; isPlaying = true; myFinished = false;
             const gridEl = document.getElementById('grid'); gridEl.innerHTML = '';
             fixedCells = Array(81).fill(false);
             for(let i=0; i<81; i++) {
-                let r = Math.floor(i/9), c = i%9, cell = document.createElement('div');
+                let r=Math.floor(i/9), c=i%9, cell = document.createElement('div');
                 cell.className = 'cell';
-                if (currentBoard[r][c] !== 0) { cell.innerText = currentBoard[r][c]; cell.classList.add('fixed'); fixedCells[i] = true; } 
-                else { cell.dataset.r = r; cell.dataset.c = c; cell.onclick = () => selectCell(cell); }
+                if(currentBoard[r][c]!==0) { cell.innerText=currentBoard[r][c]; cell.classList.add('fixed'); fixedCells[i]=true; }
+                else { cell.onclick = () => { document.querySelectorAll('.cell').forEach(c=>c.classList.remove('selected')); cell.classList.add('selected'); selectedCell=cell; selectedCell.dataset.r=r; selectedCell.dataset.c=c; }; }
                 gridEl.appendChild(cell);
             }
         }
 
         function startTimer() {
-            clearInterval(timerInterval); secondsElapsed = 0; document.getElementById('timer').innerText = "⏱️ 00:00";
+            clearInterval(timerInterval); secondsElapsed=0;
             timerInterval = setInterval(() => {
-                secondsElapsed++; let m = Math.floor(secondsElapsed/60), s = secondsElapsed%60;
+                secondsElapsed++;
+                let m = Math.floor(secondsElapsed/60), s = secondsElapsed%60;
                 document.getElementById('timer').innerText = `⏱️ ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
             }, 1000);
         }
 
-        function selectCell(cell) {
-            if(!isPlaying || myFinished) return;
-            document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
-            cell.classList.add('selected'); selectedCell = cell;
-        }
-
         function inputNum(n) {
             if(selectedCell && isPlaying && !myFinished) {
-                selectedCell.innerText = n; selectedCell.classList.add('user-input'); verifyProgress();
+                selectedCell.innerText = n; selectedCell.classList.add('user-input');
+                let r = selectedCell.dataset.r, c = selectedCell.dataset.c;
+                if(parseInt(selectedCell.innerText) === solutionBoard[r][c]) verifyProgress();
             }
         }
 
-        function clearCell() {
-            if(selectedCell && isPlaying && !myFinished) { selectedCell.innerText = ''; verifyProgress(); }
-        }
-
-        async function verifyProgress() {
+        function verifyProgress() {
             let correct = 0;
-            document.querySelectorAll('.cell').forEach((c, i) => {
-                if(!fixedCells[i] && c.innerText !== "") {
-                    if(parseInt(c.innerText) === solutionBoard[Math.floor(i/9)][i%9]) correct++;
-                }
-            });
-            let percent = Math.floor((correct / totalHoles) * 100);
-            if(percent > 100) percent = 100;
-
-            if(percent === 100 && !myFinished) {
-                myFinished = true; let finalTime = document.getElementById('timer').innerText.replace('⏱️ ', '');
-                if(currentMode === 'single') {
-                    isPlaying = false; clearInterval(timerInterval); setTimeout(() => alert(`🎉 클리어! 소요시간: ${finalTime}`), 100);
-                } else if(currentMode === 'multi') {
-                    clearInterval(timerInterval);
-                    alert(`🎉 축하합니다! 퍼즐을 완성했습니다!\n다른 가족들이 완료하거나 방장이 끝낼 때까지 대기해주세요.`);
-                    await supabaseClient.from('players').update({ progress: 100, completed_time: finalTime }).eq('id', myPlayerId);
-                }
-            } else if (currentMode === 'multi') {
-                supabaseClient.from('players').update({ progress: percent }).eq('id', myPlayerId);
-            }
+            document.querySelectorAll('.cell').forEach((c,i)=>{ if(!fixedCells[i] && c.innerText !== "" && parseInt(c.innerText) === solutionBoard[Math.floor(i/9)][i%9]) correct++; });
+            let percent = Math.floor((correct/totalHoles)*100);
+            if(percent >= 100 && !myFinished) {
+                myFinished = true;
+                if(currentMode==='single') { isPlaying=false; clearInterval(timerInterval); alert("🎉 클리어!"); }
+                else { supabaseClient.from('players').update({ progress: 100 }).eq('id', myPlayerId); }
+            } else if(currentMode==='multi') { supabaseClient.from('players').update({ progress: percent }).eq('id', myPlayerId); }
         }
 
         const np = document.getElementById('numpad');
-        for(let i=1; i<=9; i++) {
-            let b = document.createElement('button'); b.innerText = i; b.onclick = () => inputNum(i); np.appendChild(b);
-        }
-        let cb = document.createElement('button'); cb.innerText = '지우기'; cb.className = 'action'; cb.onclick = clearCell; np.appendChild(cb);
+        for(let i=1; i<=9; i++) { let b = document.createElement('button'); b.innerText = i; b.onclick = () => inputNum(i); np.appendChild(b); }
+        let cb = document.createElement('button'); cb.innerText = '지우기'; cb.className='action'; cb.onclick = () => { if(selectedCell) selectedCell.innerText=''; }; np.appendChild(cb);
+
+        function leaveGame() { location.reload(); }
     </script>
 </body>
 </html>
