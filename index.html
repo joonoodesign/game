@@ -10,10 +10,30 @@
             --primary: #4f46e5; --bg: #f8fafc; --card: #ffffff;
             --text-dark: #1e293b; --text-light: #64748b;
         }
-        body { font-family: 'Pretendard', sans-serif; display: flex; flex-direction: column; align-items: center; background: var(--bg); margin: 0; padding: 15px; color: var(--text-dark); min-height: 100vh; touch-action: manipulation; }
+        body { 
+            font-family: 'Pretendard', sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            background: var(--bg); 
+            margin: 0; 
+            padding: 15px 15px 40px 15px; /* 하단 스크롤 여백 추가 */
+            color: var(--text-dark); 
+            min-height: 100vh; 
+            min-height: 100dvh; /* 모바일 동적 뷰포트 지원 */
+            box-sizing: border-box; /* 패딩 포함 크기 계산 */
+            touch-action: manipulation; 
+        }
         h1, h2 { color: var(--primary); margin-top: 0; text-align: center; }
         
-        .screen { display: none; width: 100%; max-width: 450px; flex-direction: column; align-items: center; }
+        .screen { 
+            display: none; 
+            width: 100%; 
+            max-width: 450px; 
+            flex-direction: column; 
+            align-items: center; 
+            padding-bottom: 20px; /* 화면 내부 하단 여백 추가 */
+        }
         .screen.active { display: flex; }
         
         .card { background: var(--card); padding: 25px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; margin-bottom: 15px; }
@@ -42,7 +62,7 @@
         .cell.selected { background: #bae6fd !important; }
 
         .numpad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 100%; margin-top: 15px; }
-        .numpad button { padding: 12px 0; font-size: 1.2rem; font-weight: bold; border: none; border-radius: 8px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; }
+        .numpad button { padding: 10px 0; font-size: 1.2rem; font-weight: bold; border: none; border-radius: 8px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; }
         .numpad button.action { background: #475569; color: white; }
 
         #leaderboard { display: none; width: 100%; background: #f1f5f9; padding: 10px; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; }
@@ -166,7 +186,6 @@
             navTo('gameScreen'); startTimer();
         }
 
-        // --- 여기서부터 에러를 화면에 띄워주는 로직이 추가되었습니다 ---
         async function createRoom() {
             currentMode = 'multi';
             myName = document.getElementById('playerName').value;
@@ -175,7 +194,6 @@
             let holes = parseInt(document.getElementById('multiDiff').value);
             let boardData = generateSudoku(holes);
 
-            // DB 방 생성
             const { error: roomError } = await supabaseClient.from('rooms').insert([{ 
                 id: roomId, host: myName, status: 'waiting', difficulty: holes, 
                 solution: boardData.sol, start_board: boardData.start 
@@ -186,7 +204,6 @@
                 return;
             }
 
-            // DB 플레이어 추가
             const { data, error: playerError } = await supabaseClient.from('players').insert([{ 
                 room_id: roomId, name: myName, is_host: true 
             }]).select();
