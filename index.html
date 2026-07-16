@@ -10,7 +10,6 @@
             --primary: #4f46e5; --bg: #f8fafc; --card: #ffffff;
             --text-dark: #1e293b; --text-light: #64748b;
         }
-        /* PWA(홈 화면 추가) 앱 모드에서 하단 잘림을 완벽히 방지하는 스크롤 설정 */
         html, body { 
             height: 100%; 
             margin: 0; 
@@ -26,7 +25,6 @@
             box-sizing: border-box; 
             touch-action: manipulation;
             overflow-y: auto;
-            /* 일반 브라우저 여백 + 홈 화면 앱 모드 안전 여백(safe-area) 동시 적용 */
             padding: 15px 15px calc(120px + env(safe-area-inset-bottom)) 15px; 
         }
         h1, h2 { color: var(--primary); margin-top: 0; text-align: center; }
@@ -43,6 +41,7 @@
         .card { background: var(--card); padding: 15px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; margin-bottom: 15px; }
         .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; color: white; background: var(--primary); cursor: pointer; margin-bottom: 10px; }
         .btn-secondary { background: #e2e8f0; color: var(--text-dark); }
+        .btn-outline { background: white; color: var(--text-dark); border: 2px solid #cbd5e1; }
         .btn-danger { background: #ef4444; color: white; }
         .btn-exit { background: #64748b; color: white; margin-top: 15px; }
         
@@ -57,7 +56,6 @@
         
         .grid { display: grid; grid-template-columns: repeat(9, 1fr); border: 3px solid #334155; background: #334155; width: 100%; aspect-ratio: 1/1; gap: 1px; border-radius: 5px; overflow: hidden;}
         
-        /* 칸(Cell) 내부를 확정 숫자와 가상 숫자(메모) 레이어로 분리 */
         .cell { background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; position: relative; }
         .cell:nth-child(3n) { border-right: 2px solid #334155; }
         .cell:nth-child(9n) { border-right: none; }
@@ -68,6 +66,9 @@
         .cell.user-input .val { color: #2563eb; font-weight: bold; }
         .cell.selected { background: #bae6fd !important; }
         
+        /* 오답일 때 글씨를 빨간색으로 변경 */
+        .cell.error .val { color: #ef4444 !important; }
+
         .cell .val { position: relative; z-index: 2; pointer-events: none; font-size: 1.15rem; }
         .cell .notes {
             position: absolute; inset: 0; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
@@ -75,7 +76,6 @@
         }
         .cell .note-num { display: flex; align-items: center; justify-content: center; font-size: 0.55rem; color: #64748b; font-weight: 600; }
 
-        /* 메모/확정 모드 토글 버튼 */
         .mode-toggle { display: flex; gap: 8px; width: 100%; margin-top: 15px; }
         .btn-mode { flex: 1; padding: 10px; border: 2px solid #cbd5e1; background: white; color: #64748b; border-radius: 8px; font-size: 0.95rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-mode.active { border-color: var(--primary); background: #e0e7ff; color: var(--primary); }
@@ -157,14 +157,16 @@
         </div>
         <div class="grid" id="grid"></div>
         
-        <!-- 메모 모드 전환 버튼 -->
         <div class="mode-toggle">
             <button id="btnModeNote" class="btn-mode" onclick="setMode('note')">✏️ 가상(메모)</button>
             <button id="btnModeNormal" class="btn-mode active" onclick="setMode('normal')">🖋️ 확정(입력)</button>
         </div>
         
         <div class="numpad" id="numpad"></div>
-        <button class="btn btn-danger" id="btnEndGame" style="display: none; margin-top: 15px;" onclick="endMultiGame()">🛑 모두의 게임 종료시키기</button>
+        
+        <button class="btn btn-outline" style="margin-top: 15px;" onclick="checkAnswers()">✅ 현재까지 정답 확인하기</button>
+
+        <button class="btn btn-danger" id="btnEndGame" style="display: none; margin-top: 5px;" onclick="endMultiGame()">🛑 모두의 게임 종료시키기</button>
         <button class="btn btn-exit" onclick="leaveGame()">🚪 게임 나가기 (홈으로)</button>
     </div>
 
@@ -175,8 +177,8 @@
 
         let currentMode = '', roomId = null, myName = '', isHost = false, myPlayerId = null;
         let solutionBoard = [], currentBoard = [], fixedCells = Array(81).fill(false), totalHoles = 0, selectedCell = null;
-        let userNotes = []; // 가상 숫자(메모)를 저장할 3차원 배열
-        let inputMode = 'normal'; // 'normal' 또는 'note'
+        let userNotes = []; 
+        let inputMode = 'normal'; 
         
         let timerInterval, secondsElapsed = 0, isPlaying = false, myFinished = false; 
         let roomSubscription = null, playersSubscription = null;
@@ -330,12 +332,10 @@
             players.forEach(p => {
                 let timeStr = p.completed_time ? ` (${p.completed_time})` : '';
                 let isDone = p.progress >= 100;
-                // data-id 속성을 추가하여 로컬에서 즉시 업데이트 가능하게 만듦
                 lb.innerHTML += `<div class="lb-row" data-id="${p.id}"><div style="width: 50px; font-weight: bold;">${p.name}</div><div class="lb-bar-bg"><div class="lb-bar ${isDone?'done':''}" style="width: ${p.progress}%;"></div></div><div class="lb-text" style="width: 45px; text-align: right; font-size:0.8rem;">${isDone ? '완료!'+timeStr : p.progress+'%'}</div></div>`;
             });
         }
 
-        // 로컬 UI를 서버 통신 전에 즉시 업데이트하는 함수 (실시간 체감 딜레이 제거)
         function updateMyProgressLocally(percent, timeStr = null) {
             const myRow = document.querySelector(`.lb-row[data-id="${myPlayerId}"]`);
             if(myRow) {
@@ -375,7 +375,7 @@
 
         function setupBoard(sol, start, holes) {
             solutionBoard = sol; currentBoard = start.map(row => [...row]); totalHoles = holes;
-            userNotes = Array(9).fill().map(() => Array(9).fill().map(() => [])); // 메모 배열 초기화
+            userNotes = Array(9).fill().map(() => Array(9).fill().map(() => [])); 
             isPlaying = true; myFinished = false; selectedCell = null; setMode('normal');
             
             const gridEl = document.getElementById('grid'); gridEl.innerHTML = '';
@@ -385,7 +385,6 @@
                 let r = Math.floor(i/9), c = i%9, cell = document.createElement('div');
                 cell.className = 'cell';
                 cell.dataset.r = r; cell.dataset.c = c;
-                // 값을 렌더링할 구역과 메모를 렌더링할 구역 분리
                 cell.innerHTML = `<div class="val"></div><div class="notes"></div>`;
                 
                 if (currentBoard[r][c] !== 0) { 
@@ -412,7 +411,6 @@
             cell.classList.add('selected'); selectedCell = cell;
         }
 
-        // 셀 화면 새로고침 함수
         function renderCellUI(r, c) {
             let cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
             if(!cell) return;
@@ -442,12 +440,16 @@
 
             if(inputMode === 'normal') {
                 currentBoard[r][c] = n;
-                userNotes[r][c] = []; // 확정 시 메모 초기화
+                userNotes[r][c] = []; 
+                selectedCell.classList.remove('error'); // 숫자를 바꾸면 오답 표시 제거
             } else {
-                if(currentBoard[r][c] !== 0) currentBoard[r][c] = 0; // 메모 작성 시 확정 숫자 제거
+                if(currentBoard[r][c] !== 0) {
+                    currentBoard[r][c] = 0; 
+                    selectedCell.classList.remove('error'); // 가상 모드로 전환 시에도 오답 표시 제거
+                }
                 let idx = userNotes[r][c].indexOf(n);
-                if(idx > -1) userNotes[r][c].splice(idx, 1); // 이미 있으면 메모 제거 (토글)
-                else userNotes[r][c].push(n); // 없으면 메모 추가
+                if(idx > -1) userNotes[r][c].splice(idx, 1); 
+                else userNotes[r][c].push(n); 
             }
             renderCellUI(r, c);
             verifyProgress();
@@ -460,8 +462,45 @@
             
             currentBoard[r][c] = 0;
             userNotes[r][c] = [];
+            selectedCell.classList.remove('error'); // 지울 때 오답 표시 제거
             renderCellUI(r, c);
             verifyProgress();
+        }
+
+        // 정답 확인 함수
+        function checkAnswers() {
+            if (!isPlaying || myFinished) return;
+            
+            let errorCount = 0;
+            let filledCount = 0;
+
+            for(let i=0; i<81; i++) {
+                if(!fixedCells[i]) {
+                    let r = Math.floor(i/9), c = i%9;
+                    let cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+                    
+                    if(currentBoard[r][c] !== 0) {
+                        filledCount++;
+                        if(currentBoard[r][c] !== solutionBoard[r][c]) {
+                            cell.classList.add('error'); // 틀린 경우 빨간색 클래스 추가
+                            errorCount++;
+                        } else {
+                            cell.classList.remove('error'); // 맞는 경우 에러 해제
+                        }
+                    } else {
+                        cell.classList.remove('error'); // 빈칸인 경우 에러 해제
+                    }
+                }
+            }
+
+            // 결과 알림
+            if(filledCount === 0) {
+                alert("아직 확정해서 입력한 숫자가 없습니다.");
+            } else if(errorCount > 0) {
+                alert(`틀린 숫자가 ${errorCount}개 있습니다.\n빨간색으로 표시된 칸을 다시 확인해 보세요.`);
+            } else {
+                alert("👏 현재까지 입력하신 숫자는 모두 정답입니다!\n계속해서 진행해 주세요.");
+            }
         }
 
         async function verifyProgress() {
@@ -469,7 +508,6 @@
             for(let i=0; i<81; i++) {
                 if(!fixedCells[i]) {
                     let r = Math.floor(i/9), c = i%9;
-                    // 가상 숫자는 무시하고 확정된 숫자만 정답과 비교
                     if(currentBoard[r][c] !== 0 && currentBoard[r][c] === solutionBoard[r][c]) {
                         correct++;
                     }
@@ -486,12 +524,12 @@
                     isPlaying = false; clearInterval(timerInterval); setTimeout(() => alert(`🎉 클리어! 소요시간: ${finalTime}`), 100);
                 } else if(currentMode === 'multi') {
                     clearInterval(timerInterval);
-                    updateMyProgressLocally(100, finalTime); // 로컬 100% 즉시 반영
+                    updateMyProgressLocally(100, finalTime); 
                     alert(`🎉 축하합니다! 퍼즐을 완성했습니다!\n다른 가족들이 완료하거나 방장이 끝낼 때까지 대기해주세요.`);
                     await supabaseClient.from('players').update({ progress: 100, completed_time: finalTime }).eq('id', myPlayerId);
                 }
             } else if (currentMode === 'multi') {
-                updateMyProgressLocally(percent); // 통신 딜레이 없이 내 화면 먼저 업데이트
+                updateMyProgressLocally(percent); 
                 supabaseClient.from('players').update({ progress: percent }).eq('id', myPlayerId);
             }
         }
